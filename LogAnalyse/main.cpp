@@ -124,7 +124,7 @@ void analyseLog(QString fileName, unsigned int topResCount){
         //std::cout <<  i <<' ' <<topResCount <<' '<< oneLine.toLocal8Bit().data() << std::endl;
 
         lineToParse >> a1 >> a2 >> a3 >> a4 >> a5;
-        std::cout << a1.toLocal8Bit().data() << a2.toLocal8Bit().data() << a3.toLocal8Bit().data()<< a3.toLocal8Bit().data() << std::endl;
+        std::cout << a1.toLocal8Bit().data() << a2.toLocal8Bit().data() << a3.toLocal8Bit().data()<< a4.toLocal8Bit().data() << std::endl;
 
         oneLine = in.readLine();
 
