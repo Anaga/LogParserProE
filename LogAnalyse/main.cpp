@@ -5,6 +5,8 @@
 #include <QDebug>
 #include <QString>
 #include <iostream>
+#include <QFile>
+#include <QDateTime>
 
 #define SW_VERSION 1.0
 
@@ -15,7 +17,9 @@ void printVersion();
 int main(int argc, char *argv[])
 {
     bool readyToRun = false;
-    QCoreApplication app(argc, argv); //renamed the a to app
+    int topN;
+    QString message;
+    //QCoreApplication app(argc, argv);
     if (argc <2) printShortHelp();
     if (argc == 2) {
         QString a2 = argv[1];
@@ -25,11 +29,62 @@ int main(int argc, char *argv[])
     }
     if (argc == 3) {
         QString a2 = argv[1];
+        QFile file(a2);
+        if (!file.exists()){
+            message = "Can't find file %1 to read\n";
+            message = message.arg(a2);
+            std::cout << message.toLocal8Bit().data();
+            return -1;
+        }
+
+        if(!file.open(QFile::ReadOnly | QFile::Text))  {
+            message = "Can't open the file %1  for reading\n";
+            message = message.arg(a2);
+            std::cout << message.toLocal8Bit().data();
+            return -1;
+        }
+
         QString a3 = argv[2];
+        bool bOk;
+        topN = a3.toInt(&bOk);
+        if (!bOk) {
+            message = "Can't parse arg %1 to integer\n";
+            message = message.arg(a3);
+            std::cout << message.toLocal8Bit().data();
+            return -1;
+        }
+        QDateTime qdtStart = QDateTime::currentDateTime();
+        qint64 startMilSec = QDateTime::currentMSecsSinceEpoch();
+
+
+        QTextStream in(&file);
+        QString oneLine = in.readLine();
+        int i = 0;
+        while (oneLine!= nullptr) {
+            i++;
+            // 1000 rows can be printed out by 6176 milsec
+            //qDebug() <<  i  <<topN << oneLine ;//<< std::endl;
+
+            // 1000 rows can be printed out by 2301 milsec
+            std::cout <<  i <<' ' <<topN <<' '<< oneLine.toLocal8Bit().data() << std::endl;
+            oneLine = in.readLine();
+        }
+        file.close();
+
+        QDateTime qdtStop = QDateTime::currentDateTime();
+        qint64 stpoMilSec = QDateTime::currentMSecsSinceEpoch();
+        qint64 delta = stpoMilSec - startMilSec;
+        message = "Start time %1\n"
+                  "Stop  time %2\n"
+                  "Delta %3 milsec\n";
+        QString qsTimeFormat = "hh:mm:ss.z";
+        message = message.arg(qdtStart.toString(qsTimeFormat)).arg(qdtStop.toString(qsTimeFormat)).arg(delta);
+        std::cout << message.toLocal8Bit().data();
+
 
     }
     if (!readyToRun) return 0;
-    return app.exec(); //and we run the application
+    return 0; //app.exec(); //and we run the application
 }
 
 void printShortHelp(){
