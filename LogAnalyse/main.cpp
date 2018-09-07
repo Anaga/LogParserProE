@@ -13,12 +13,16 @@
 void printShortHelp();
 void printLongHelp();
 void printVersion();
+void analyseLog(QString fileName, unsigned int topResCount);
+
 
 int main(int argc, char *argv[])
 {
     bool readyToRun = false;
     int topN;
     QString message;
+    QString fileName;
+
     //QCoreApplication app(argc, argv);
     if (argc <2) printShortHelp();
     if (argc == 2) {
@@ -44,6 +48,8 @@ int main(int argc, char *argv[])
             return -1;
         }
 
+        fileName = a2;
+
         QString a3 = argv[2];
         bool bOk;
         topN = a3.toInt(&bOk);
@@ -52,38 +58,20 @@ int main(int argc, char *argv[])
             message = message.arg(a3);
             std::cout << message.toLocal8Bit().data();
             return -1;
-        }
-        QDateTime qdtStart = QDateTime::currentDateTime();
-        qint64 startMilSec = QDateTime::currentMSecsSinceEpoch();
+        }        
+        if (topN <= 0) {
+            message = "N shall be positive\n";
+            std::cout << message.toLocal8Bit().data();
+            return -1;
 
-
-        QTextStream in(&file);
-        QString oneLine = in.readLine();
-        int i = 0;
-        while (oneLine!= nullptr) {
-            i++;
-            // 1000 rows can be printed out by 6176 milsec
-            //qDebug() <<  i  <<topN << oneLine ;//<< std::endl;
-
-            // 1000 rows can be printed out by 2301 milsec
-            std::cout <<  i <<' ' <<topN <<' '<< oneLine.toLocal8Bit().data() << std::endl;
-            oneLine = in.readLine();
         }
         file.close();
-
-        QDateTime qdtStop = QDateTime::currentDateTime();
-        qint64 stpoMilSec = QDateTime::currentMSecsSinceEpoch();
-        qint64 delta = stpoMilSec - startMilSec;
-        message = "Start time %1\n"
-                  "Stop  time %2\n"
-                  "Delta %3 milsec\n";
-        QString qsTimeFormat = "hh:mm:ss.z";
-        message = message.arg(qdtStart.toString(qsTimeFormat)).arg(qdtStop.toString(qsTimeFormat)).arg(delta);
-        std::cout << message.toLocal8Bit().data();
-
+        readyToRun = true;
 
     }
     if (!readyToRun) return 0;
+
+    analyseLog(fileName, topN);
     return 0; //app.exec(); //and we run the application
 }
 
@@ -105,5 +93,51 @@ void printLongHelp(){
 void printVersion(){
     QString message = "Version %1 \n";
     message = message.arg(SW_VERSION, 0, 'f', 3);
+    std::cout << message.toLocal8Bit().data();
+}
+
+void analyseLog(QString fileName, unsigned int topResCount){
+    QDateTime qdtStart = QDateTime::currentDateTime();
+    qint64 startMilSec = QDateTime::currentMSecsSinceEpoch();
+    QFile file(fileName);
+
+    qint64 iFileSize = file.size();
+    QString message = "File size %1 in bytes\n";
+    message = message.arg(iFileSize);
+    std::cout << message.toLocal8Bit().data();
+
+    file.open(QFile::ReadOnly | QFile::Text);
+
+    QTextStream in(&file);
+    QTextStream lineToParse;
+    QString oneLine = in.readLine();
+
+    QString a1,a2,a3,a4,a5;
+    int i = 0;
+    while (oneLine!= nullptr) {
+        i++;
+        lineToParse.setString(&oneLine);
+        // 1000 rows can be printed out by 6176 milsec
+        //qDebug() <<  i  <<topN << oneLine ;//<< std::endl;
+
+        // 1000 rows can be printed out by 2301 milsec
+        //std::cout <<  i <<' ' <<topResCount <<' '<< oneLine.toLocal8Bit().data() << std::endl;
+
+        lineToParse >> a1 >> a2 >> a3 >> a4 >> a5;
+        std::cout << a1.toLocal8Bit().data() << a2.toLocal8Bit().data() << a3.toLocal8Bit().data()<< a3.toLocal8Bit().data() << std::endl;
+
+        oneLine = in.readLine();
+
+    }
+    file.close();
+
+    QDateTime qdtStop = QDateTime::currentDateTime();
+    qint64 stpoMilSec = QDateTime::currentMSecsSinceEpoch();
+    qint64 delta = stpoMilSec - startMilSec;
+    message = "Start time %1\n"
+              "Stop  time %2\n"
+              "Delta %3 milsec\n";
+    QString qsTimeFormat = "hh:mm:ss.z";
+    message = message.arg(qdtStart.toString(qsTimeFormat)).arg(qdtStop.toString(qsTimeFormat)).arg(delta);
     std::cout << message.toLocal8Bit().data();
 }
