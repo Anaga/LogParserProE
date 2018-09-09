@@ -7,8 +7,26 @@
 #include <iostream>
 #include <QFile>
 #include <QDateTime>
+#include <QSet>
 
 #define SW_VERSION 1.0
+
+struct resurse
+{
+    QString n_name;
+    int m_count;
+    long m_summ;
+    resurse(QString name, long dur) {
+        n_name = name;
+        m_summ = dur;
+        m_count=1;
+    }
+    resurse() {
+        n_name = "";
+        m_summ = 0;
+        m_count=0;
+    }
+};
 
 void printShortHelp();
 void printLongHelp();
@@ -96,6 +114,25 @@ void printVersion(){
     std::cout << message.toLocal8Bit().data();
 }
 
+QString extractResource(QString URI){
+    std::cout << URI.toLocal8Bit().data() << std::endl;
+    int index = 0;
+    if (URI.contains(".do?action")){
+        index = URI.indexOf("&");
+        if (index > 1) return URI.left(index);
+    }
+    index = URI.indexOf(".do");
+    if (index > 1) return URI.left(index+3);
+
+    index = URI.indexOf(".jsp?");
+    if (index > 1) return URI.left(index+4);
+
+    index = URI.indexOf(".pdf?");
+    if (index > 1) return URI.left(index+4);
+
+    return URI;
+}
+
 void analyseLog(QString fileName, unsigned int topResCount){
     QDateTime qdtStart = QDateTime::currentDateTime();
     qint64 startMilSec = QDateTime::currentMSecsSinceEpoch();
@@ -112,7 +149,19 @@ void analyseLog(QString fileName, unsigned int topResCount){
     QTextStream lineToParse;
     QString oneLine = in.readLine();
 
-    QString a1,a2,a3,a4,a5;
+    QSet<QString> resurseSet;
+    QVector<resurse> resurseVect;
+
+    QVector<QString> resName;
+    QVector<long>    resSumm;
+    QVector<int>     resCount;
+
+
+    QString a1,a2,a3,a4,a5,a6,a7;
+    QString shortName;
+
+    bool bOk;
+    int duration;
     int i = 0;
     while (oneLine!= nullptr) {
         i++;
@@ -123,13 +172,47 @@ void analyseLog(QString fileName, unsigned int topResCount){
         // 1000 rows can be printed out by 2301 milsec
         //std::cout <<  i <<' ' <<topResCount <<' '<< oneLine.toLocal8Bit().data() << std::endl;
 
-        lineToParse >> a1 >> a2 >> a3 >> a4 >> a5;
-        std::cout << a1.toLocal8Bit().data() << a2.toLocal8Bit().data() << a3.toLocal8Bit().data()<< a4.toLocal8Bit().data() << std::endl;
+        lineToParse >> a1 >> a2 >> a3 >> a4 >> a5 >> a6 >> a7;
+        //std::cout << a1.toLocal8Bit().data() << a2.toLocal8Bit().data() << a3.toLocal8Bit().data()<< a4.toLocal8Bit().data() << std::endl;
+        //std::cout << a5.toLocal8Bit().data() << " in "<< a7.toLocal8Bit().data() << std::endl;
+        duration = a7.toInt(&bOk);
+        if(!bOk) {
+            std::cout << "can't convert " << a7.toLocal8Bit().data() << "to int \n";
+            duration = 0;
+        }
+        shortName = extractResource(a5);
+        if (!resurseSet.contains(shortName)){
+
+            resName.append(shortName);
+            resCount.append(1);
+            resSumm.append(duration);
+
+            resurseSet << shortName;
+        } else {
+            int index = resName.indexOf(shortName);
+            if (index == -1) { std::cout << "CODE ERROR! \n"; return ;}
+            resCount[index]++;
+            resSumm[index]+=duration;
+
+            int N = resCount.at(index);
+            long S =  resSumm.at(index);
+            float A = (float)S/N;
+            std::cout << shortName.toLocal8Bit().data() << " count " << N << " summ "<< S <<" Aver "<< A << std::endl;
+
+        }
+
 
         oneLine = in.readLine();
 
     }
     file.close();
+
+    qDebug() << "resurseSet size is "<<resurseSet.size();
+    QStringList qsl1 = resurseSet.toList();
+
+    qsl1.sort();
+    foreach (const QString &value, qsl1)
+        qDebug() << value;
 
     QDateTime qdtStop = QDateTime::currentDateTime();
     qint64 stpoMilSec = QDateTime::currentMSecsSinceEpoch();
