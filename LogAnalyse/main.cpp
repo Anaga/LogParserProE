@@ -11,6 +11,36 @@
 
 #define SW_VERSION 1.0
 
+struct t_rec
+{
+    QString m_name;
+    int m_count;
+    long m_summ;
+    float m_aver;
+
+public:
+    QString toPrint()
+    {
+        QString qsTemp = "N: %1 C:%2 S:%3 A:%4\n";
+        return qsTemp
+                .arg(m_name)
+                .arg(m_count)
+                .arg(m_summ)
+                .arg(m_aver);}
+
+    void calcAver()
+    { m_aver = m_summ/(float)m_count; }
+
+    void addRecord(long duration)
+    {
+      m_count++;
+      m_summ+=duration;
+      calcAver();
+    }
+};
+
+
+
 struct resurse
 {
     QString n_name;
@@ -40,6 +70,26 @@ int main(int argc, char *argv[])
     int topN;
     QString message;
     QString fileName;
+
+    t_rec r1 = {"aaa", 1, 10, 10};
+    t_rec r2 = {"bb", 1, 5, 5};
+    t_rec r3 = {"ccc", 1, 100, 100};
+
+    QVector<t_rec> myVect;
+    myVect << r1;
+    myVect.append(r2);
+    myVect << r3;
+
+    myVect[1].addRecord(35);
+
+
+    QVector<t_rec>::iterator i;
+      for (i = myVect.begin(); i != myVect.end(); ++i){
+
+          message = (*i).toPrint();
+          std::cout << message.toLocal8Bit().data();
+      }
+
 
     //QCoreApplication app(argc, argv);
     if (argc <2) printShortHelp();
@@ -89,7 +139,7 @@ int main(int argc, char *argv[])
     }
     if (!readyToRun) return 0;
 
-    analyseLog(fileName, topN);
+    //analyseLog(fileName, topN);
     return 0; //app.exec(); //and we run the application
 }
 
