@@ -31,7 +31,7 @@ public:
     void calcAver()
     { m_aver = m_summ/(float)m_count; }
 
-    void addRecord(long duration)
+    void updateRecord(long duration)
     {
       m_count++;
       m_summ+=duration;
@@ -39,24 +39,46 @@ public:
     }
 };
 
-
-
-struct resurse
+struct t_allResurces
 {
-    QString n_name;
-    int m_count;
-    long m_summ;
-    resurse(QString name, long dur) {
-        n_name = name;
-        m_summ = dur;
-        m_count=1;
+    t_allResurces() {}
+    QVector<t_rec> myVect;
+
+public:
+    void addOrUpdateRecord(QString resName, long resDuration)
+    {
+        bool resExist = false;
+        QVector<t_rec>::iterator i;
+        for (i = myVect.begin(); i != myVect.end(); ++i){
+            if( resName == (*i).m_name ){
+                (*i).updateRecord(resDuration);
+                resExist = true;
+                break;
+            }
+        }
+        if (!resExist) {
+            t_rec newRes = {resName, 1, resDuration, (float)resDuration};
+            myVect.append(newRes);
+        }
     }
-    resurse() {
-        n_name = "";
-        m_summ = 0;
-        m_count=0;
+
+    int size() {return myVect.size();}
+
+    QString toPrintAll()
+    {
+        QStringList qslTempList;
+        QString qsTemp;
+        QVector<t_rec>::iterator i;
+        for (i = myVect.begin(); i != myVect.end(); ++i){
+            qsTemp = (*i).toPrint();
+            qslTempList.append(qsTemp);
+        }
+        return qslTempList.join("");
     }
+
+
 };
+
 
 void printShortHelp();
 void printLongHelp();
@@ -70,25 +92,6 @@ int main(int argc, char *argv[])
     int topN;
     QString message;
     QString fileName;
-
-    t_rec r1 = {"aaa", 1, 10, 10};
-    t_rec r2 = {"bb", 1, 5, 5};
-    t_rec r3 = {"ccc", 1, 100, 100};
-
-    QVector<t_rec> myVect;
-    myVect << r1;
-    myVect.append(r2);
-    myVect << r3;
-
-    myVect[1].addRecord(35);
-
-
-    QVector<t_rec>::iterator i;
-      for (i = myVect.begin(); i != myVect.end(); ++i){
-
-          message = (*i).toPrint();
-          std::cout << message.toLocal8Bit().data();
-      }
 
 
     //QCoreApplication app(argc, argv);
@@ -139,7 +142,7 @@ int main(int argc, char *argv[])
     }
     if (!readyToRun) return 0;
 
-    //analyseLog(fileName, topN);
+    analyseLog(fileName, topN);
     return 0; //app.exec(); //and we run the application
 }
 
@@ -165,7 +168,7 @@ void printVersion(){
 }
 
 QString extractResource(QString URI){
-    std::cout << URI.toLocal8Bit().data() << std::endl;
+    //std::cout << URI.toLocal8Bit().data() << std::endl;
     int index = 0;
     if (URI.contains(".do?action")){
         index = URI.indexOf("&");
@@ -188,6 +191,8 @@ void analyseLog(QString fileName, unsigned int topResCount){
     qint64 startMilSec = QDateTime::currentMSecsSinceEpoch();
     QFile file(fileName);
 
+    t_allResurces notebook;
+
     qint64 iFileSize = file.size();
     QString message = "File size %1 in bytes\n";
     message = message.arg(iFileSize);
@@ -198,13 +203,6 @@ void analyseLog(QString fileName, unsigned int topResCount){
     QTextStream in(&file);
     QTextStream lineToParse;
     QString oneLine = in.readLine();
-
-    QSet<QString> resurseSet;
-    QVector<resurse> resurseVect;
-
-    QVector<QString> resName;
-    QVector<long>    resSumm;
-    QVector<int>     resCount;
 
 
     QString a1,a2,a3,a4,a5,a6,a7;
@@ -231,38 +229,17 @@ void analyseLog(QString fileName, unsigned int topResCount){
             duration = 0;
         }
         shortName = extractResource(a5);
-        if (!resurseSet.contains(shortName)){
 
-            resName.append(shortName);
-            resCount.append(1);
-            resSumm.append(duration);
-
-            resurseSet << shortName;
-        } else {
-            int index = resName.indexOf(shortName);
-            if (index == -1) { std::cout << "CODE ERROR! \n"; return ;}
-            resCount[index]++;
-            resSumm[index]+=duration;
-
-            int N = resCount.at(index);
-            long S =  resSumm.at(index);
-            float A = (float)S/N;
-            std::cout << shortName.toLocal8Bit().data() << " count " << N << " summ "<< S <<" Aver "<< A << std::endl;
-
-        }
-
+        notebook.addOrUpdateRecord(shortName,duration);
+        //std::cout << "notebook size " << notebook.size() << std::endl;
 
         oneLine = in.readLine();
 
     }
     file.close();
 
-    qDebug() << "resurseSet size is "<<resurseSet.size();
-    QStringList qsl1 = resurseSet.toList();
-
-    qsl1.sort();
-    foreach (const QString &value, qsl1)
-        qDebug() << value;
+    message = notebook.toPrintAll();
+    std::cout << message.toLocal8Bit().data();
 
     QDateTime qdtStop = QDateTime::currentDateTime();
     qint64 stpoMilSec = QDateTime::currentMSecsSinceEpoch();
