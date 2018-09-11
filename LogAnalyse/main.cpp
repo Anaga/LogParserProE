@@ -9,6 +9,7 @@
 #include <QDateTime>
 #include <QSet>
 
+
 #define SW_VERSION 1.0
 
 struct t_rec
@@ -33,9 +34,9 @@ public:
 
     void updateRecord(long duration)
     {
-      m_count++;
-      m_summ+=duration;
-      calcAver();
+        m_count++;
+        m_summ+=duration;
+        calcAver();
     }
 };
 
@@ -43,15 +44,20 @@ struct t_allResurces
 {
     t_allResurces() {}
     QVector<t_rec> myVect;
+    QMap <QString, float> sortedMap;
+    QList <t_rec> sortedList;
+    //QLinkedList<t_rec> sortedList;
 
 public:
     void addOrUpdateRecord(QString resName, long resDuration)
     {
+        float average = -1.0;
         bool resExist = false;
         QVector<t_rec>::iterator i;
         for (i = myVect.begin(); i != myVect.end(); ++i){
             if( resName == (*i).m_name ){
                 (*i).updateRecord(resDuration);
+                average = (*i).m_aver;
                 resExist = true;
                 break;
             }
@@ -59,7 +65,42 @@ public:
         if (!resExist) {
             t_rec newRes = {resName, 1, resDuration, (float)resDuration};
             myVect.append(newRes);
+            average = newRes.m_aver;
         }
+        sortedMap.insert(resName, average);
+    }
+
+    void fillSortedList(int topN)
+    {
+        bool findPos=false;
+        int vecInd;
+        int listIndex;
+        t_rec vecRec, listRec;
+        qDebug() << "myVect size is" << myVect.size();
+        qDebug() << "sortedList size is" << sortedList.size();
+        for (vecInd =0; vecInd < myVect.size(); ++vecInd){
+            findPos=false;
+            vecRec = myVect.at(vecInd);
+            for (listIndex = 0; listIndex < sortedList.size(); ++listIndex){
+                listRec = sortedList.at(listIndex);
+                if (vecRec.m_aver > listRec.m_aver){
+                    sortedList.insert(listIndex,vecRec);
+                    findPos=true;
+                    break;
+                }
+            }
+            if (!findPos) {sortedList.append(vecRec);}
+        }
+
+        qDebug() << "sortedList size is" << sortedList.size();
+        qDebug() << "Cut all exept N top records " << topN;
+
+        for (listIndex = 0; listIndex < sortedList.size() && listIndex < topN; ++listIndex){
+            qDebug() << sortedList[listIndex].toPrint();
+        }
+
+
+
     }
 
     int size() {return myVect.size();}
@@ -76,6 +117,20 @@ public:
         return qslTempList.join("");
     }
 
+    QString toPrintTopN(int N)
+    {
+        QStringList qslTempList;
+        QString qsTemp = "%1: resurse %2, average use %3 \n";
+        int i=0;
+        QMap<QString, float>::const_iterator it;
+        for (it = sortedMap.constBegin(); it != sortedMap.constEnd() && i<N; ++it, ++i){
+            qsTemp = qsTemp.arg(i).arg(it.key()).arg(it.value());
+            qDebug() << qsTemp;
+            qslTempList.append(qsTemp);
+            qsTemp = "%1: resurse %2, average use %3 \n";
+        }
+        return qslTempList.join("");
+    }
 
 };
 
@@ -129,7 +184,7 @@ int main(int argc, char *argv[])
             message = message.arg(a3);
             std::cout << message.toLocal8Bit().data();
             return -1;
-        }        
+        }
         if (topN <= 0) {
             message = "N shall be positive\n";
             std::cout << message.toLocal8Bit().data();
@@ -201,45 +256,54 @@ void analyseLog(QString fileName, unsigned int topResCount){
     file.open(QFile::ReadOnly | QFile::Text);
 
     QTextStream in(&file);
-    QTextStream lineToParse;
     QString oneLine = in.readLine();
 
 
     QString a1,a2,a3,a4,a5,a6,a7;
     QString shortName;
+    QString qsDur;
+    QStringList split;
 
     bool bOk;
     int duration;
     int i = 0;
+    int lineParts =0;
     while (oneLine!= nullptr) {
         i++;
-        lineToParse.setString(&oneLine);
-        // 1000 rows can be printed out by 6176 milsec
-        //qDebug() <<  i  <<topN << oneLine ;//<< std::endl;
 
-        // 1000 rows can be printed out by 2301 milsec
-        //std::cout <<  i <<' ' <<topResCount <<' '<< oneLine.toLocal8Bit().data() << std::endl;
-
-        lineToParse >> a1 >> a2 >> a3 >> a4 >> a5 >> a6 >> a7;
-        //std::cout << a1.toLocal8Bit().data() << a2.toLocal8Bit().data() << a3.toLocal8Bit().data()<< a4.toLocal8Bit().data() << std::endl;
-        //std::cout << a5.toLocal8Bit().data() << " in "<< a7.toLocal8Bit().data() << std::endl;
-        duration = a7.toInt(&bOk);
-        if(!bOk) {
-            std::cout << "can't convert " << a7.toLocal8Bit().data() << "to int \n";
-            duration = 0;
+        split = oneLine.split(' ');
+        lineParts = split.size();
+        if (lineParts < 6) {
+            std::cout << "skip this line: " << i << ", to short \n";
+            continue;
         }
-        shortName = extractResource(a5);
 
+        if (split.at(lineParts-2) != "in"){
+            std::cout << "skip this line: " << i << ", no 'in' in the end \n";
+            continue;
+        }
+        qsDur = split.at(lineParts-1);
+
+        duration = qsDur.toInt(&bOk);
+        if(!bOk) {
+            std::cout <<"skip this line: " << i << ", can't convert " << qsDur.toLocal8Bit().data() << "to int \n";
+            continue;
+        }
+
+        shortName = extractResource(split.at(4));
         notebook.addOrUpdateRecord(shortName,duration);
-        //std::cout << "notebook size " << notebook.size() << std::endl;
 
         oneLine = in.readLine();
-
     }
     file.close();
 
     message = notebook.toPrintAll();
     std::cout << message.toLocal8Bit().data();
+
+    message = notebook.toPrintTopN(topResCount);
+    //std::cout << message.toLocal8Bit().data();
+    notebook.fillSortedList(topResCount);
+
 
     QDateTime qdtStop = QDateTime::currentDateTime();
     qint64 stpoMilSec = QDateTime::currentMSecsSinceEpoch();
