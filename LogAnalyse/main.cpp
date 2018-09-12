@@ -8,9 +8,9 @@
 #include <QFile>
 #include <QDateTime>
 #include <QSet>
+#include <QLocale>
 
-
-#define SW_VERSION 1.0
+#define SW_VERSION 1.01
 
 struct t_rec
 {
@@ -92,11 +92,11 @@ public:
             if (!findPos) {sortedList.append(vecRec);}
         }
 
-        qDebug() << "sortedList size is" << sortedList.size();
-        qDebug() << "Cut all exept N top records " << topN;
+        //qDebug() << "sortedList size is" << sortedList.size();
+        //qDebug() << "Cut all exept N top records " << topN;
 
         for (listIndex = 0; listIndex < sortedList.size() && listIndex < topN; ++listIndex){
-            qDebug() << sortedList[listIndex].toPrint();
+          //  qDebug() << sortedList[listIndex].toPrint();
         }
 
 
@@ -222,6 +222,20 @@ void printVersion(){
     std::cout << message.toLocal8Bit().data();
 }
 
+int grabMinutes(QString time){
+    QStringList qsl = time.split(':');
+    if (qsl.size()!=3) return -1;
+
+    bool bOk = false;
+
+    int minutes = qsl.at(1).toInt(&bOk);
+    if (!bOk) return -2;
+
+    if (minutes > 60) return -3;
+    if (minutes < 0) return -4;
+    return minutes;
+
+}
 QString extractResource(QString URI){
     //std::cout << URI.toLocal8Bit().data() << std::endl;
     int index = 0;
@@ -258,8 +272,8 @@ void analyseLog(QString fileName, unsigned int topResCount){
     QTextStream in(&file);
     QString oneLine = in.readLine();
 
-
-    QString a1,a2,a3,a4,a5,a6,a7;
+    QString date;
+    QString timeStamp;
     QString shortName;
     QString qsDur;
     QStringList split;
@@ -277,6 +291,12 @@ void analyseLog(QString fileName, unsigned int topResCount){
             std::cout << "skip this line: " << i << ", to short \n";
             continue;
         }
+
+        date = split.at(0);
+
+        timeStamp = split.at(1);
+        int min = grabMinutes(timeStamp);
+        std::cout <<date.toLocal8Bit().data() <<" at "<< timeStamp.toLocal8Bit().data() << " in min: " << min<< std::endl;
 
         if (split.at(lineParts-2) != "in"){
             std::cout << "skip this line: " << i << ", no 'in' in the end \n";
@@ -297,10 +317,10 @@ void analyseLog(QString fileName, unsigned int topResCount){
     }
     file.close();
 
-    message = notebook.toPrintAll();
+    //message = notebook.toPrintAll();
     std::cout << message.toLocal8Bit().data();
 
-    message = notebook.toPrintTopN(topResCount);
+    //message = notebook.toPrintTopN(topResCount);
     //std::cout << message.toLocal8Bit().data();
     notebook.fillSortedList(topResCount);
 
