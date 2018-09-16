@@ -12,6 +12,21 @@
 
 #define SW_VERSION 1.01
 
+
+struct t_histRec
+{
+    QString m_timestamp;
+    int m_count;
+
+    QString toPrint()
+    {
+        QString qsTemp = "%1 %2\n";
+        //qsTemp = qsTemp.arg(m_timestamp).arg(m_count);
+        qsTemp = qsTemp.arg(m_timestamp).arg('*',m_count, (QChar)'#');
+        return qsTemp;
+    }
+};
+
 struct t_rec
 {
     QString m_name;
@@ -47,6 +62,10 @@ struct t_allResurces
     QMap <QString, float> sortedMap;
     QList <t_rec> sortedList;
     //QLinkedList<t_rec> sortedList;
+
+    //QHash<QString, int> histogrammHash;
+
+    QList<t_histRec> histogrammList;
 
 public:
     void addOrUpdateRecord(QString resName, long resDuration)
@@ -282,6 +301,13 @@ void analyseLog(QString fileName, unsigned int topResCount){
     int duration;
     int i = 0;
     int lineParts =0;
+
+    int hisCount = 0;
+    QString hisName = "";
+    t_histRec lastHist;
+    t_histRec newHisRec = {hisName, hisCount};
+    notebook.histogrammList.append(newHisRec);
+
     while (oneLine!= nullptr) {
         i++;
 
@@ -295,8 +321,21 @@ void analyseLog(QString fileName, unsigned int topResCount){
         date = split.at(0);
 
         timeStamp = split.at(1);
-        int min = grabMinutes(timeStamp);
-        std::cout <<date.toLocal8Bit().data() <<" at "<< timeStamp.toLocal8Bit().data() << " in min: " << min<< std::endl;
+        hisName = date+" "+timeStamp.left(5);
+
+        lastHist = notebook.histogrammList.last();
+        if (hisName !=  lastHist.m_timestamp) { // we have new time stamp
+            //qDebug () << " we have new time stamp ";
+            t_histRec newHisRec = {hisName, 1};
+            notebook.histogrammList.append(newHisRec);
+            //std::cout << newHisRec.toPrint().toLocal8Bit().data()<< std::endl;
+
+        }else { // this time stam it the same as last, increase count
+           // qDebug() << " this time stam it the same as last, increase count , now count is " << lastHist.m_count;
+            notebook.histogrammList.last().m_count++;
+         //   std::cout << lastHist.toPrint().toLocal8Bit().data()<< std::endl;
+        }
+       // std::cout << lastHist.toPrint().toLocal8Bit().data()<< std::endl;
 
         if (split.at(lineParts-2) != "in"){
             std::cout << "skip this line: " << i << ", no 'in' in the end \n";
