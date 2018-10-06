@@ -12,7 +12,6 @@
 
 #define SW_VERSION 1.01
 
-
 struct t_histRec
 {
     QString m_timestamp;
@@ -20,9 +19,8 @@ struct t_histRec
 
     QString toPrint()
     {
-        QString qsTemp = "%1 %2\n";
-        //qsTemp = qsTemp.arg(m_timestamp).arg(m_count);
-        qsTemp = qsTemp.arg(m_timestamp).arg('*',m_count, (QChar)'#');
+        QString qsTemp = "%1 %2 %3\n";
+        qsTemp = qsTemp.arg(m_timestamp).arg(' ',m_count+1, (QChar)'#').arg(m_count);
         return qsTemp;
     }
 };
@@ -37,7 +35,7 @@ struct t_rec
 public:
     QString toPrint()
     {
-        QString qsTemp = "N: %1 C:%2 S:%3 A:%4\n";
+        QString qsTemp = "Record Name: %1 Count:%2 Sum:%3 Aver:%4\n";
         return qsTemp
                 .arg(m_name)
                 .arg(m_count)
@@ -61,9 +59,6 @@ struct t_allResurces
     QVector<t_rec> myVect;
     QMap <QString, float> sortedMap;
     QList <t_rec> sortedList;
-    //QLinkedList<t_rec> sortedList;
-
-    //QHash<QString, int> histogrammHash;
 
     QList<t_histRec> histogrammList;
 
@@ -111,11 +106,11 @@ public:
             if (!findPos) {sortedList.append(vecRec);}
         }
 
-        //qDebug() << "sortedList size is" << sortedList.size();
-        //qDebug() << "Cut all exept N top records " << topN;
+        qDebug() << "sortedList size is" << sortedList.size();
+        qDebug() << "Cut all exept N top records " << topN;
 
         for (listIndex = 0; listIndex < sortedList.size() && listIndex < topN; ++listIndex){
-          //  qDebug() << sortedList[listIndex].toPrint();
+            qDebug() << sortedList[listIndex].toPrint();
         }
 
 
@@ -151,6 +146,17 @@ public:
         return qslTempList.join("");
     }
 
+    QString toPrintHistogramm()
+    {
+        QStringList qslTempList;
+        QString qsTemp;
+        QList<t_histRec>::iterator i;
+        for (i = histogrammList.begin(); i != histogrammList.end(); ++i){
+            qsTemp = (*i).toPrint();
+            qslTempList.append(qsTemp);
+        }
+        return qslTempList.join("");
+    }
 };
 
 
@@ -167,8 +173,6 @@ int main(int argc, char *argv[])
     QString message;
     QString fileName;
 
-
-    //QCoreApplication app(argc, argv);
     if (argc <2) printShortHelp();
     if (argc == 2) {
         QString a2 = argv[1];
@@ -187,7 +191,7 @@ int main(int argc, char *argv[])
         }
 
         if(!file.open(QFile::ReadOnly | QFile::Text))  {
-            message = "Can't open the file %1  for reading\n";
+            message = "Can't open the file %1 for reading\n";
             message = message.arg(a2);
             std::cout << message.toLocal8Bit().data();
             return -1;
@@ -217,12 +221,12 @@ int main(int argc, char *argv[])
     if (!readyToRun) return 0;
 
     analyseLog(fileName, topN);
-    return 0; //app.exec(); //and we run the application
+    return 0;  //and we run the application
 }
 
 void printShortHelp(){
     QString message =  "For this appplication is nessesery to give 2 arguments \n"
-                       "First log file name to analyse, and N - number of top resurses. \n"
+                       "First log file name to analyse, and N - number of top resources. \n"
                        "Enter -h for help\n";
     std::cout << message.toLocal8Bit().data();
 }
@@ -230,7 +234,7 @@ void printShortHelp(){
 void printLongHelp(){
     QString message = "Log processing application. version %1 \n"
                       "For this appplication is nessesery to give 2 arguments \n"
-                      "First log file name to analyse, and N - number of top resurses. \n";
+                      "First log file name to analyse, and N - number of top resources. \n";
     message = message.arg(SW_VERSION, 0, 'f', 3);
     std::cout << message.toLocal8Bit().data();
 }
@@ -241,7 +245,7 @@ void printVersion(){
     std::cout << message.toLocal8Bit().data();
 }
 
-int grabMinutes(QString time){
+int grabMinutes(QString time){  //string time in format '00:06:35,769'
     QStringList qsl = time.split(':');
     if (qsl.size()!=3) return -1;
 
@@ -253,8 +257,8 @@ int grabMinutes(QString time){
     if (minutes > 60) return -3;
     if (minutes < 0) return -4;
     return minutes;
-
 }
+
 QString extractResource(QString URI){
     //std::cout << URI.toLocal8Bit().data() << std::endl;
     int index = 0;
@@ -311,17 +315,28 @@ void analyseLog(QString fileName, unsigned int topResCount){
     while (oneLine!= nullptr) {
         i++;
 
+        // oneLine is
+        // 2015-08-19 00:06:16,835 (http--0.0.0.0-28080-391) [] /checkSession.do in 123
+
         split = oneLine.split(' ');
+
+        // split list:
+        // 0 - 2015-08-19
+        // 1 - 00:06:16,835
+        // 2 - (http--0.0.0.0-28080-391)
+        // 3 - []
+        // 4 - /checkSession.do
+        // 5 - in
+        // 6 - 123
         lineParts = split.size();
-        if (lineParts < 6) {
+        if (lineParts <= 6) {
             std::cout << "skip this line: " << i << ", to short \n";
             continue;
         }
 
-        date = split.at(0);
-
-        timeStamp = split.at(1);
-        hisName = date+" "+timeStamp.left(5);
+        date = split.at(0);                     // 0 - 2015-08-19
+        timeStamp = split.at(1);                // 1 - 00:06:16,835
+        hisName = date+" "+timeStamp.left(5);   // hisName = "2015-08-19 00:06"
 
         lastHist = notebook.histogrammList.last();
         if (hisName !=  lastHist.m_timestamp) { // we have new time stamp
@@ -330,7 +345,7 @@ void analyseLog(QString fileName, unsigned int topResCount){
             notebook.histogrammList.append(newHisRec);
             //std::cout << newHisRec.toPrint().toLocal8Bit().data()<< std::endl;
 
-        }else { // this time stam it the same as last, increase count
+        }else { // this time stamp it the same as last, increase count
            // qDebug() << " this time stam it the same as last, increase count , now count is " << lastHist.m_count;
             notebook.histogrammList.last().m_count++;
          //   std::cout << lastHist.toPrint().toLocal8Bit().data()<< std::endl;
@@ -356,11 +371,11 @@ void analyseLog(QString fileName, unsigned int topResCount){
     }
     file.close();
 
-    //message = notebook.toPrintAll();
+    message = notebook.toPrintAll();
     std::cout << message.toLocal8Bit().data();
 
-    //message = notebook.toPrintTopN(topResCount);
-    //std::cout << message.toLocal8Bit().data();
+    message = notebook.toPrintTopN(topResCount);
+    std::cout << message.toLocal8Bit().data();
     notebook.fillSortedList(topResCount);
 
 
@@ -373,4 +388,12 @@ void analyseLog(QString fileName, unsigned int topResCount){
     QString qsTimeFormat = "hh:mm:ss.z";
     message = message.arg(qdtStart.toString(qsTimeFormat)).arg(qdtStop.toString(qsTimeFormat)).arg(delta);
     std::cout << message.toLocal8Bit().data();
+
+    message = "\nLog histogramm: \n";
+    std::cout << message.toLocal8Bit().data();
+
+    message = notebook.toPrintHistogramm();
+    std::cout << message.toLocal8Bit().data();
+
+
 }
